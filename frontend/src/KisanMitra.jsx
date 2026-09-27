@@ -3318,30 +3318,71 @@ function AIAssistantView({ lang }) {
   const endRef = useRef(null);
 
   const getResponse = (q) => {
-    const ql = q.toLowerCase();
-    if (ql.includes('msp') || ql.includes('wheat msp')) return AI_RESPONSES['wheat msp'];
-    if (ql.includes('mustard') && (ql.includes('sell') || ql.includes('when'))) return AI_RESPONSES['mustard'];
-    if (ql.includes('yellow rust') || ql.includes('rust')) return AI_RESPONSES['yellow rust'];
-    if (ql.includes('scheme') || ql.includes('government') || ql.includes('pm-kisan')) {
-      return `**Government Schemes for You:**\n\n${SCHEMES.filter(s=>s.eligible).map(s=>`✅ **${s.name}** — ${s.benefit}\n   ${s.desc}`).join('\n\n')}\n\nApply through your nearest Common Service Centre (CSC) or pmkisan.gov.in`;
+    const ql = (q || '').toLowerCase().trim();
+    if (/^(hi|hello|hey|hcll|helo|halo|namaste|namaskar|pranam|ram ram|kya haal|kaise ho|good morning)[\s!.]*$/i.test(ql) || ql === 'hi' || ql === 'hello' || ql === 'hey' || ql === 'hcll') {
+      return "Namaste Kisan Bhai! 🙏 Hello!\n\nI am **KisanMitra AI**, your dedicated 24/7 agricultural advisor.\n\nHow can I assist your farm today? You can ask me about:\n• 🌾 **Crop Health & Disease Remedies** (Yellow rust, aphids, spray doses)\n• 📊 **Mandi Prices & Government MSP** (Wheat, Mustard, Rice, Cotton)\n• 🏪 **Mandi Comparison** (Find the highest net-profit market)\n• 💰 **Sell vs Hold Advisory** (Price predictions & storage analysis)\n• 🌦️ **Weather Advisories & Rain Forecasts**\n• 🏛️ **Government Subsidies & Schemes** (PM-KISAN, PMFBY, KCC)\n\nWhat crop are you currently managing or planning to harvest?";
     }
-    if (ql.includes('mandi') || ql.includes('compare')) {
-      return `**Current Mandi Prices — Wheat:**\n\n${MANDIS.slice(0,3).map(m=>`🏪 **${m.name.split(' ')[0]}** — ₹${m.wheat}/qtl (${m.dist}km away)`).join('\n')}\n\n💡 **Best choice**: Ludhiana Mandi at ₹2,380/qtl with highest net return after transport.`;
+    if (/^(thanks|thank you|shukriya|dhanyawad|ok|okay|theek hai|got it|accha)[\s!.]*$/i.test(ql)) {
+      return "You're most welcome, Kisan Bhai! 🙏 Always here to help you maximize your crop yield and get the best prices at the mandi. Let me know if you need any other farming guidance!";
     }
-    return AI_RESPONSES['default'];
+    if (ql.includes('yellow rust') || ql.includes('rust') || (ql.includes('wheat') && (ql.includes('disease') || ql.includes('bimari')))) {
+      return "⚠️ **Yellow Rust (Puccinia striiformis) Management in Wheat:**\n\n1. **Symptoms**: Bright yellow-orange powdery pustules in linear stripes on leaves.\n2. **Immediate Fungicide Spray**:\n   • **Propiconazole 25% EC (Tilt)** @ 1 ml per litre of water (200 ml in 200L water/acre), OR\n   • **Tebuconazole 25.9% EW** @ 1 ml/litre.\n3. **Application**: Spray during early morning (6:30–9:30 AM). Repeat after 14–18 days if infection persists.\n4. **Preventive Action**: Use rust-resistant seed varieties (HD-3086, DBW-187, PBW-725) in next season.";
+    }
+    if (ql.includes('msp') || ql.includes('support price') || ql.includes('wheat msp')) {
+      return "📊 **Government Minimum Support Price (MSP) 2025–26:**\n\n• 🌾 **Wheat**: **₹2,275 / quintal** (Market rate currently ₹2,340–2,420/qtl)\n• 🌻 **Mustard**: **₹5,650 / quintal**\n• 🍚 **Paddy / Rice (Common)**: **₹2,300 / quintal**\n• 🌽 **Maize**: **₹1,962 / quintal**\n• 🟤 **Gram (Chana)**: **₹5,440 / quintal**\n• 🌿 **Cotton**: **₹6,620 / quintal**\n• 🌱 **Soybean**: **₹4,892 / quintal**\n\n💡 Current Punjab wheat rates are trading ₹65–120/qtl above MSP.";
+    }
+    if (ql.includes('mustard') || ql.includes('sarson')) {
+      return "🟢 **Market Advisory for Mustard (Sarson):**\n\n• **Current Market Rate**: ₹5,820 / quintal (Amritsar APMC)\n• **Official MSP**: ₹5,650 / quintal\n• **Recommendation**: **HOLD / WAIT (2–3 Weeks)**\n• **Price Forecast**: Expected to reach **₹5,980–6,080/qtl** due to firm oilseed processing demand.\n• **Weather Check**: Clear skies over next 4 days—safe for dry farm storage.\n\n💡 *Action: Keep moisture below 8% in storage bags.*";
+    }
+    if (ql.includes('fertilizer') || ql.includes('urea') || ql.includes('dap') || ql.includes('khad')) {
+      return "📋 **Wheat Fertilizer Schedule (Rabi Season Per Acre):**\n\n• **Basal (At Sowing)**: 50 kg DAP + 20 kg Potash (MOP) + 10 kg Zinc Sulphate (21%).\n• **1st Top Dressing**: 35 kg Neem-Coated Urea with first irrigation (21–25 DAS).\n• **2nd Top Dressing**: 35 kg Urea at jointing stage (40–45 DAS).\n\n💡 Use Nano Urea spray (4 ml/L water) at tillering to boost efficiency and prevent nitrogen leaching.";
+    }
+    if (ql.includes('weather') || ql.includes('rain') || ql.includes('barish') || ql.includes('mausam')) {
+      return "🌦️ **Agricultural Weather Advisory:**\n\n• **Forecast**: Clear to partly cloudy sky with temperatures between 14°C and 27°C.\n• **Rain Probability**: Low (under 15%) for the next 72 hours—ideal for fertilizer application and harvesting.\n• **Humidity**: 68% morning humidity. Monitor wheat fields for fungal rust.\n• **Precaution**: Keep waterproof tarpaulins on standby for open mandi yards.";
+    }
+    if (ql.includes('scheme') || ql.includes('government') || ql.includes('pm-kisan') || ql.includes('subsidy')) {
+      return `🏛️ **Key Government Schemes for You:**\n\n${SCHEMES.filter(s=>s.eligible).map(s=>`✅ **${s.name}** — ${s.benefit}\n   ${s.desc}`).join('\n\n')}\n\nApply through your nearest Common Service Centre (CSC) or pmkisan.gov.in`;
+    }
+    if (ql.includes('mandi') || ql.includes('compare') || ql.includes('market') || ql.includes('ludhiana') || ql.includes('amritsar')) {
+      return `🏪 **Current Mandi Prices & Net Profit Comparison:**\n\n${MANDIS.slice(0,3).map(m=>`• **${m.name.split(' ')[0]} Mandi**: ₹${m.wheat}/qtl (${m.dist}km away)`).join('\n')}\n\n💡 **Highest Net Return**: Ludhiana Mandi yields ₹2,100 higher take-home profit for 50 quintals even after deducting transportation freight.`;
+    }
+    if (ql.includes('pest') || ql.includes('keeda') || ql.includes('insect') || ql.includes('spray')) {
+      return "🛡️ **Pest Management Advisory:**\n\n• **Aphids / Mahu**: Spray Dimethoate 30% EC @ 1.5 ml/L or Imidacloprid 17.8% SL @ 0.5 ml/L water.\n• **Caterpillars / Borers**: Spray Emamectin Benzoate 5% SG @ 0.5 g/L water.\n• **Application Note**: Spray in early morning or evening hours. Avoid spraying under strong sunlight or windy conditions.";
+    }
+    return `Namaste Kisan Bhai! 🙏\n\nRegarding your question: *"**${q}**"*\n\nHere is our smart agricultural recommendation:\n• 🌾 **Farming Guidance**: Ensure adequate soil moisture and inspect crop canopy regularly for any discoloration or pest symptoms.\n• 📊 **Market Advantage**: Compare local quotes against official MSP (Wheat: ₹2,275/qtl, Mustard: ₹5,650/qtl) to secure fair pricing.\n• 💡 **Try asking**: *"What is wheat MSP?"*, *"When to sell mustard?"*, *"How to treat yellow rust?"*, or *"Fertilizer schedule for wheat"*`;
   };
 
-  const send = async () => {
-    if (!input.trim()) return;
-    const userMsg = { role:'user', text:input };
+  const send = async (textToSend) => {
+    const text = (typeof textToSend === 'string' ? textToSend : input).trim();
+    if (!text || loading) return;
+    const userMsg = { role:'user', text };
     setMessages(m => [...m, userMsg]);
     setInput('');
     setLoading(true);
+
+    try {
+      const res = await fetch('/api/assistant/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, language: lang })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.data && data.data.reply) {
+          setMessages(m => [...m, { role:'assistant', text: data.data.reply }]);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend chat API offline or unreachable, using local intelligence:', err);
+    }
+
     setTimeout(() => {
-      const resp = getResponse(userMsg.text);
+      const resp = getResponse(text);
       setMessages(m => [...m, { role:'assistant', text:resp }]);
       setLoading(false);
-    }, 1200);
+    }, 500);
   };
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, loading]);
@@ -3358,7 +3399,7 @@ function AIAssistantView({ lang }) {
       {/* Suggested questions */}
       <div className="flex flex-wrap gap-2 mb-3">
         {CHAT_SUGGESTIONS.map(s => (
-          <button key={s} onClick={() => { setInput(s); }} className="whitespace-nowrap px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 text-xs font-medium rounded-full hover:bg-emerald-50 transition-colors shrink-0">{s}</button>
+          <button key={s} onClick={() => { setInput(s); send(s); }} className="whitespace-nowrap px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 text-xs font-medium rounded-full hover:bg-emerald-50 transition-colors shrink-0">{s}</button>
         ))}
       </div>
       {/* Messages */}
