@@ -127,12 +127,13 @@ router.post('/chat', async (req, res) => {
 
   if (!message) return sendError(res, 'message is required.', 400);
 
-  // If real Gemini key is configured, use Google Gemini 2.0 Flash
+  // If real Gemini key is configured, use Google Gemini (gemini-2.5-flash)
+  const geminiModelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   if (GEMINI_KEY && GEMINI_KEY !== 'your_gemini_api_key_here' && GEMINI_KEY.length > 10) {
     try {
       const { GoogleGenerativeAI } = require('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const model = genAI.getGenerativeModel({ model: geminiModelName });
 
       const systemPrompt = `You are KisanMitra AI (किसानमित्र), a warm, supportive, and expert personal agricultural advisor assisting Indian farmer ${farmerName} from ${location}.
 Farmer Profile:
@@ -151,7 +152,7 @@ Guidelines:
       const result = await model.generateContent(`${systemPrompt}\n\nFarmer asks: ${message}`);
       const text = result?.response?.text();
       if (text && text.trim().length > 0) {
-        return sendSuccess(res, { reply: text, source: 'gemini-2.0-flash', timestamp: new Date().toISOString() }, 'Response generated.');
+        return sendSuccess(res, { reply: text, source: geminiModelName, timestamp: new Date().toISOString() }, 'Response generated.');
       }
     } catch (err) {
       console.error('Gemini call error, falling back to local agricultural engine:', err.message);
