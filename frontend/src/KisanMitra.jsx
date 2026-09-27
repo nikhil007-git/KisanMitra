@@ -3308,7 +3308,7 @@ function WeatherRiskView({ lang, weather, location, onRefreshLocation, locationL
 }
 
 // 9. AI ASSISTANT
-function AIAssistantView({ lang }) {
+function AIAssistantView({ lang, farmer, profileData, location }) {
   const t = T[lang];
   const [messages, setMessages] = useState([
     { role:'assistant', text:"Namaste! 🙏 I'm KisanMitra AI, your personal agricultural advisor. I can help you with crop management, mandi prices, weather advisories, and selling decisions.\n\nWhat can I help you with today?" }
@@ -3317,13 +3317,33 @@ function AIAssistantView({ lang }) {
   const [loading, setLoading] = useState(false);
   const endRef = useRef(null);
 
+  const fName = farmer?.name || profileData?.fullName || 'Nikhil Kumar';
+  const fLoc = farmer?.location || profileData?.district || 'Defence Colony Tehsil, Delhi';
+  const fCrops = profileData?.mainCrops || 'Wheat, Rice, Mustard';
+  const fLand = profileData?.totalLand || '10.7 Acres';
+
   const getResponse = (q) => {
     const ql = (q || '').toLowerCase().trim();
+
+    // 0. Farmer Identity & Profile
+    if (/\b(what is my name|who am i|mera naam|mera name|my name|who is this|kaun hoon main)\b/i.test(ql) || ql.includes('my name') || ql.includes('mera naam')) {
+      return `Your name is **${fName}**! 🌾\n\nYou are logged in as a registered farmer from **${fLoc}**.\n\nYour profile details:\n• 📍 **Location**: ${fLoc}\n• 🌱 **Primary Crops**: ${fCrops}\n• 🚜 **Land Holding**: ${fLand}\n\nHow can I help you with your fields today, ${fName}?`;
+    }
+    if (/\b(where am i|my location|mera khet|mera gaon|where is my farm|meri location)\b/i.test(ql) || (ql.includes('my') && ql.includes('location'))) {
+      return `Your registered farm location is **${fLoc}**! 📍\n\nAll real-time weather alerts and nearby APMC mandi price indices on your dashboard are automatically tailored for this region.`;
+    }
+    if (/\b(my crops|meri fasal|what am i growing|meri fasalein)\b/i.test(ql) || (ql.includes('my') && (ql.includes('crop') || ql.includes('fasal')))) {
+      return `According to your farm profile, your main crops are **${fCrops}** across **${fLand}**.\n\nWould you like current mandi prices, fertilizer schedules, or selling advice for any of these crops?`;
+    }
+    if (/\b(my land|how much land|mera khet kitna|meri zamin)\b/i.test(ql) || (ql.includes('my') && ql.includes('land'))) {
+      return `Your registered farm area is **${fLand}**.\n\nYou can use our **Profit Calculator** tab to estimate total revenue and logistics costs for your entire acreage!`;
+    }
+
     if (/^(hi|hello|hey|hcll|helo|halo|namaste|namaskar|pranam|ram ram|kya haal|kaise ho|good morning)[\s!.]*$/i.test(ql) || ql === 'hi' || ql === 'hello' || ql === 'hey' || ql === 'hcll') {
-      return "Namaste Kisan Bhai! 🙏 Hello!\n\nI am **KisanMitra AI**, your dedicated 24/7 agricultural advisor.\n\nHow can I assist your farm today? You can ask me about:\n• 🌾 **Crop Health & Disease Remedies** (Yellow rust, aphids, spray doses)\n• 📊 **Mandi Prices & Government MSP** (Wheat, Mustard, Rice, Cotton)\n• 🏪 **Mandi Comparison** (Find the highest net-profit market)\n• 💰 **Sell vs Hold Advisory** (Price predictions & storage analysis)\n• 🌦️ **Weather Advisories & Rain Forecasts**\n• 🏛️ **Government Subsidies & Schemes** (PM-KISAN, PMFBY, KCC)\n\nWhat crop are you currently managing or planning to harvest?";
+      return `Namaste ${fName}! 🙏 Hello!\n\nI am **KisanMitra AI**, your dedicated 24/7 agricultural advisor.\n\nHow can I assist your farm today? You can ask me about:\n• 🌾 **Crop Health & Disease Remedies** (Yellow rust, aphids, spray doses)\n• 📊 **Mandi Prices & Government MSP** (Wheat, Mustard, Rice, Cotton)\n• 🏪 **Mandi Comparison** (Find the highest net-profit market)\n• 💰 **Sell vs Hold Advisory** (Price predictions & storage analysis)\n• 🌦️ **Weather Advisories & Rain Forecasts**\n• 🏛️ **Government Subsidies & Schemes** (PM-KISAN, PMFBY, KCC)\n\nWhat crop are you currently managing or planning to harvest?`;
     }
     if (/^(thanks|thank you|shukriya|dhanyawad|ok|okay|theek hai|got it|accha)[\s!.]*$/i.test(ql)) {
-      return "You're most welcome, Kisan Bhai! 🙏 Always here to help you maximize your crop yield and get the best prices at the mandi. Let me know if you need any other farming guidance!";
+      return `You're most welcome, ${fName}! 🙏 Always here to help you maximize your crop yield and get the best prices at the mandi. Let me know if you need any other farming guidance!`;
     }
     if (ql.includes('yellow rust') || ql.includes('rust') || (ql.includes('wheat') && (ql.includes('disease') || ql.includes('bimari')))) {
       return "⚠️ **Yellow Rust (Puccinia striiformis) Management in Wheat:**\n\n1. **Symptoms**: Bright yellow-orange powdery pustules in linear stripes on leaves.\n2. **Immediate Fungicide Spray**:\n   • **Propiconazole 25% EC (Tilt)** @ 1 ml per litre of water (200 ml in 200L water/acre), OR\n   • **Tebuconazole 25.9% EW** @ 1 ml/litre.\n3. **Application**: Spray during early morning (6:30–9:30 AM). Repeat after 14–18 days if infection persists.\n4. **Preventive Action**: Use rust-resistant seed varieties (HD-3086, DBW-187, PBW-725) in next season.";
@@ -3349,7 +3369,7 @@ function AIAssistantView({ lang }) {
     if (ql.includes('pest') || ql.includes('keeda') || ql.includes('insect') || ql.includes('spray')) {
       return "🛡️ **Pest Management Advisory:**\n\n• **Aphids / Mahu**: Spray Dimethoate 30% EC @ 1.5 ml/L or Imidacloprid 17.8% SL @ 0.5 ml/L water.\n• **Caterpillars / Borers**: Spray Emamectin Benzoate 5% SG @ 0.5 g/L water.\n• **Application Note**: Spray in early morning or evening hours. Avoid spraying under strong sunlight or windy conditions.";
     }
-    return `Namaste Kisan Bhai! 🙏\n\nRegarding your question: *"**${q}**"*\n\nHere is our smart agricultural recommendation:\n• 🌾 **Farming Guidance**: Ensure adequate soil moisture and inspect crop canopy regularly for any discoloration or pest symptoms.\n• 📊 **Market Advantage**: Compare local quotes against official MSP (Wheat: ₹2,275/qtl, Mustard: ₹5,650/qtl) to secure fair pricing.\n• 💡 **Try asking**: *"What is wheat MSP?"*, *"When to sell mustard?"*, *"How to treat yellow rust?"*, or *"Fertilizer schedule for wheat"*`;
+    return `Namaste ${fName}! 🙏\n\nRegarding your question: *"**${q}**"*\n\nHere is our smart agricultural recommendation:\n• 🌾 **Farming Guidance**: Ensure adequate soil moisture and inspect your **${fCrops}** canopy regularly for any discoloration or pest symptoms.\n• 📊 **Market Advantage**: Compare local quotes against official MSP (Wheat: ₹2,275/qtl, Mustard: ₹5,650/qtl) to secure fair pricing.\n• 💡 **Try asking**: *"What is wheat MSP?"*, *"When to sell mustard?"*, *"How to treat yellow rust?"*, or *"Fertilizer schedule for wheat"*`;
   };
 
   const send = async (textToSend) => {
@@ -3364,7 +3384,14 @@ function AIAssistantView({ lang }) {
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, language: lang })
+        body: JSON.stringify({
+          message: text,
+          language: lang,
+          farmerName: fName,
+          location: fLoc,
+          crops: fCrops,
+          land: fLand
+        })
       });
       if (res.ok) {
         const data = await res.json();
@@ -4047,7 +4074,7 @@ export default function KisanMitra() {
       case 'predict': return <PricePredictionView lang={lang} onNavigate={navigate}/>;
       case 'calc': return <ProfitCalculatorView lang={lang}/>;
       case 'weather': return <WeatherRiskView lang={lang} weather={weather} location={location} onRefreshLocation={detectLocationAndWeather} locationLoading={locationLoading}/>;
-      case 'assistant': return <AIAssistantView lang={lang} location={farmer.location}/>;
+      case 'assistant': return <AIAssistantView lang={lang} farmer={farmer} profileData={profileData} location={location}/>;
       case 'reports': return <ReportsView lang={lang}/>;
       case 'profile': return (
         <ProfileView

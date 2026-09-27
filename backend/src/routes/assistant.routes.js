@@ -6,18 +6,42 @@ const db = require('../data/mockData');
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
 // Smart Agricultural Knowledge Engine for instant response & offline fallback
-function getAgriculturalAdvice(message, { location = 'Punjab, India', cropContext = 'Wheat', language = 'en' } = {}) {
+function getAgriculturalAdvice(message, {
+  location = 'Punjab, India',
+  cropContext = 'Wheat',
+  language = 'en',
+  farmerName = 'Nikhil Kumar',
+  crops = 'Wheat, Rice, Mustard',
+  land = '10.7 Acres'
+} = {}) {
   const q = (message || '').toLowerCase().trim();
+
+  // 0. Farmer Identity & Profile (Name, Location, Land, Crops)
+  if (/\b(what is my name|who am i|mera naam|mera name|my name|who is this|kaun hoon main)\b/i.test(q) || q.includes('my name') || q.includes('mera naam')) {
+    return `Your name is **${farmerName}**! 🌾\n\nYou are logged in as a registered farmer from **${location}**.\n\nYour profile details:\n• 📍 **Location**: ${location}\n• 🌱 **Primary Crops**: ${crops}\n• 🚜 **Land Holding**: ${land}\n\nHow can I help you with your fields today, ${farmerName}?`;
+  }
+
+  if (/\b(where am i|my location|mera khet|mera gaon|where is my farm|meri location)\b/i.test(q) || (q.includes('my') && q.includes('location'))) {
+    return `Your registered farm location is **${location}**! 📍\n\nAll real-time weather alerts and nearby APMC mandi price indices on your dashboard are automatically tailored for this region.`;
+  }
+
+  if (/\b(my crops|meri fasal|what am i growing|meri fasalein)\b/i.test(q) || (q.includes('my') && (q.includes('crop') || q.includes('fasal')))) {
+    return `According to your farm profile, your main crops are **${crops}** across **${land}**.\n\nWould you like current mandi prices, fertilizer schedules, or selling advice for any of these crops?`;
+  }
+
+  if (/\b(my land|how much land|mera khet kitna|meri zamin)\b/i.test(q) || (q.includes('my') && q.includes('land'))) {
+    return `Your registered farm area is **${land}**.\n\nYou can use our **Profit Calculator** tab to estimate total revenue and logistics costs for your entire acreage!`;
+  }
 
   // 1. Greetings & Pleasantries (including common typos like "hcll")
   if (/^(hi|hello|hey|hcll|helo|halo|namaste|namaskar|pranam|ram ram|kya haal|kaise ho|good morning|good evening|good afternoon)[\s!.]*$/i.test(q) ||
       q === 'hi' || q === 'hello' || q === 'hey' || q === 'hcll') {
-    return `Namaste Kisan Bhai! 🙏 Hello!\n\nI am **KisanMitra AI**, your dedicated 24/7 agricultural advisor.\n\nHow can I help your farm today? You can ask me about:\n• 🌾 **Crop Advisories & Pest Management** (Yellow rust, aphids, fertilizers)\n• 📊 **Live Mandi Prices & MSP** (Wheat, Mustard, Paddy, Cotton, etc.)\n• 🏪 **Mandi Comparison** (Find where you get the highest net profit)\n• 💰 **When to Sell vs Hold** (Price predictions & storage analysis)\n• 🌦️ **Weather Forecasts & Rain Alerts**\n• 🏛️ **Government Subsidies & Schemes** (PM-KISAN, PMFBY, KCC)\n\nWhich crop are you currently growing or planning to sell?`;
+    return `Namaste ${farmerName}! 🙏 Hello!\n\nI am **KisanMitra AI**, your dedicated 24/7 agricultural advisor.\n\nHow can I help your farm today? You can ask me about:\n• 🌾 **Crop Advisories & Pest Management** (Yellow rust, aphids, fertilizers)\n• 📊 **Live Mandi Prices & MSP** (Wheat, Mustard, Paddy, Cotton, etc.)\n• 🏪 **Mandi Comparison** (Find where you get the highest net profit)\n• 💰 **When to Sell vs Hold** (Price predictions & storage analysis)\n• 🌦️ **Weather Forecasts & Rain Alerts**\n• 🏛️ **Government Subsidies & Schemes** (PM-KISAN, PMFBY, KCC)\n\nWhich crop are you currently growing or planning to sell?`;
   }
 
   // 2. Gratitude & Acknowledgement
   if (/^(thanks|thank you|shukriya|dhanyawad|ok|okay|theek hai|got it|accha|shukran)[\s!.]*$/i.test(q)) {
-    return `You're most welcome, Kisan Bhai! 🙏\n\nI am always here to help you maximize your crop yield and get the best prices at the mandi. Let me know if you need anything else on crop health, spray schedules, or market rates!`;
+    return `You're most welcome, ${farmerName}! 🙏\n\nI am always here to help you maximize your crop yield and get the best prices at the mandi. Let me know if you need anything else on crop health, spray schedules, or market rates!`;
   }
 
   // 3. Yellow Rust & Wheat Diseases
@@ -87,11 +111,20 @@ function getAgriculturalAdvice(message, { location = 'Punjab, India', cropContex
   }
 
   // 15. Default Contextual Advisor
-  return `Namaste Kisan Bhai! 🙏\n\nRegarding your question: *"**${message}**"*\n\nHere is our smart agricultural recommendation:\n\n• 🌾 **Farming Guidance**: Ensure proper soil moisture and monitor crop canopy for any pest or fungal spots.\n• 📊 **Market Advantage**: Always verify current APMC modal prices against government MSP before committing to a local buyer.\n• 💡 **Free Support**: You can ask me specific questions like: \n  - *"What is current wheat MSP?"*\n  - *"When should I sell mustard?"*\n  - *"How to cure yellow rust?"*\n  - *"Fertilizer schedule for wheat"*`;
+  return `Namaste ${farmerName}! 🙏\n\nRegarding your question: *"**${message}**"*\n\nHere is our smart agricultural recommendation:\n\n• 🌾 **Farming Guidance**: Ensure proper soil moisture and monitor your **${crops}** crop canopy for any pest or fungal spots.\n• 📊 **Market Advantage**: Always verify current APMC modal prices against government MSP before committing to a local buyer.\n• 💡 **Free Support**: You can ask me specific questions like: \n  - *"What is current wheat MSP?"*\n  - *"When should I sell mustard?"*\n  - *"How to cure yellow rust?"*\n  - *"Fertilizer schedule for wheat"*`;
 }
 
 router.post('/chat', async (req, res) => {
-  const { message, language = 'en', cropContext = 'Wheat', location = 'Punjab, India' } = req.body;
+  const {
+    message,
+    language = 'en',
+    cropContext = 'Wheat',
+    location = 'Punjab, India',
+    farmerName = 'Nikhil Kumar',
+    crops = 'Wheat, Rice, Mustard',
+    land = '10.7 Acres'
+  } = req.body;
+
   if (!message) return sendError(res, 'message is required.', 400);
 
   // If real Gemini key is configured, use Google Gemini 2.0 Flash
@@ -101,12 +134,17 @@ router.post('/chat', async (req, res) => {
       const genAI = new GoogleGenerativeAI(GEMINI_KEY);
       const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-      const systemPrompt = `You are KisanMitra AI (किसानमित्र), a warm, supportive, and expert agricultural advisor assisting Indian farmers.
-Location: ${location}. Primary crop: ${cropContext}. Preferred Language: ${language}.
+      const systemPrompt = `You are KisanMitra AI (किसानमित्र), a warm, supportive, and expert personal agricultural advisor assisting Indian farmer ${farmerName} from ${location}.
+Farmer Profile:
+- Name: ${farmerName}
+- Location: ${location}
+- Primary Crops: ${crops}
+- Total Land: ${land}
+If the farmer asks about their identity, name, location, crops, or land, refer to these details accurately!
 Guidelines:
-1. Always address the farmer respectfully ("Kisan Bhai", "Namaste").
+1. Always address the farmer respectfully ("Kisan Bhai", "${farmerName}").
 2. Answer clearly, accurately, concisely using practical farm terms, bullet points, and emoji highlights.
-3. If they send a simple greeting like "hi", "hello", "hcll", or "namaste", greet them warmly and ask how you can help their farm today.
+3. If they send a simple greeting like "hi", "hello", "hcll", or "namaste", greet them warmly by name and ask how you can help their farm today.
 4. Mention Government MSP (Minimum Support Price) and relevant schemes (PM-KISAN, PMFBY, KCC) when discussing crop sales or finances.
 5. Use Indian Rupees (₹) and metric units (Quintal, Acre, Kilogram).`;
 
@@ -121,7 +159,7 @@ Guidelines:
   }
 
   // Smart agricultural knowledge engine (comprehensive domain fallback)
-  const reply = getAgriculturalAdvice(message, { location, cropContext, language });
+  const reply = getAgriculturalAdvice(message, { location, cropContext, language, farmerName, crops, land });
   return sendSuccess(res, { reply, source: 'kisanmitra-expert-engine', timestamp: new Date().toISOString() }, 'Response generated.');
 });
 
