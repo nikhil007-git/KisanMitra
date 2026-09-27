@@ -55,8 +55,10 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = config.server.port || 5000;
-app.listen(PORT, () => {
-  console.log(`🌾 KisanMitra Backend running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🌾 KisanMitra Backend running on http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;
