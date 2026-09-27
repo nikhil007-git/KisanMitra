@@ -1,0 +1,293 @@
+// KisanMitra AI - PostgreSQL Database Schema (Prisma)
+// Complete relational schema for farmers, crops, mandis, market prices, predictions & decisions
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER / FARMER
+// ─────────────────────────────────────────────────────────────────────────────
+model User {
+  id             String         @id @default(uuid())
+  name           String
+  phone          String         @unique
+  email          String?        @unique
+  passwordHash   String
+  language       String         @default("hi")    // hi, en, pa, bn, mr, te, ta
+  state          String?                           // Maharashtra, Punjab, UP, etc.
+  district       String?
+  village        String?
+  farmSizeAcres  Float?
+  latitude       Float?
+  longitude      Float?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  crops          Crop[]
+  decisions      DecisionHistory[]
+  sessions       Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CROPS
+// ─────────────────────────────────────────────────────────────────────────────
+model Crop {
+  id             String         @id @default(uuid())
+  userId         String
+  name           String                             // Wheat, Cotton, Onion, Mustard, etc.
+  nameHindi      String?                            // गेहूं, कपास, प्याज
+  variety        String?                            // e.g. "HD-2967" for wheat
+  sowingDate     DateTime?
+  harvestDate    DateTime?
+  growthStage    GrowthStage    @default(SOWING)
+  areaAcres      Float
+  soilType       SoilType?
+  irrigationType IrrigationType?
+  expectedYield  Float?                             // quintals
+  notes          String?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  predictions    Prediction[]
+  decisions      DecisionHistory[]
+
+  @@map("crops")
+}
+
+enum GrowthStage {
+  SOWING
+  GERMINATION
+  VEGETATIVE
+  FLOWERING
+  FRUITING
+  MATURITY
+  HARVEST_READY
+  HARVESTED
+}
+
+enum SoilType {
+  ALLUVIAL
+  BLACK_COTTON
+  RED_LATERITE
+  SANDY_LOAM
+  CLAY_LOAM
+  SANDY
+}
+
+enum IrrigationType {
+  RAINFED
+  CANAL
+  DRIP
+  SPRINKLER
+  TUBE_WELL
+  BORE_WELL
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MANDIS (APMC MARKETS)
+// ─────────────────────────────────────────────────────────────────────────────
+model Mandi {
+  id           String        @id @default(uuid())
+  name         String                          // Azadpur, Lasalgaon, Khanna, Vashi
+  nameHindi    String?                         // आजादपुर, लासलगाव
+  code         String?       @unique           // APMC / e-NAM market code
+  state        String
+  district     String
+  city         String
+  latitude     Float
+  longitude    Float
+  isActive     Boolean       @default(true)
+  facilities   String[]      @default([])      // ["cold_storage","weighbridge","lab"]
+  operatingDays String[]     @default(["Mon","Tue","Wed","Thu","Fri","Sat"])
+  contactPhone String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  marketPrices MarketPrice[]
+  predictions  Prediction[]
+
+  @@map("mandis")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DAILY MARKET PRICES
+// ─────────────────────────────────────────────────────────────────────────────
+model MarketPrice {
+  id             String   @id @default(uuid())
+  mandiId        String
+  commodity      String                        // Wheat, Cotton, Onion, Mustard, Paddy
+  variety        String?                       // e.g. Sharbati, Long Staple
+  priceDate      DateTime @db.Date
+  minPrice       Float                         // ₹ per quintal
+  maxPrice       Float                         // ₹ per quintal
+  modalPrice     Float                         // Most common traded price
+  arrivalTonnes  Float?                        // Arrivals in metric tonnes
+  unit           String   @default("quintal")
+  source         String   @default("agmarknet") // agmarknet, enam, manual
+  createdAt      DateTime @default(now())
+
+  mandi          Mandi    @relation(fields: [mandiId], references: [id], onDelete: Cascade)
+
+  @@unique([mandiId, commodity, priceDate, variety])
+  @@index([commodity, priceDate])
+  @@index([mandiId, priceDate])
+  @@map("market_prices")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI PRICE PREDICTIONS (Claude-generated)
+// ─────────────────────────────────────────────────────────────────────────────
+model Prediction {
+  id                 String     @id @default(uuid())
+  cropId             String
+  mandiId            String
+  commodity          String
+  predictionDate     DateTime   @default(now())
+  horizon            Int        @default(30)      // days ahead: 30, 60, 90
+  currentModalPrice  Float                        // ₹ per quintal today
+  predictedMinPrice  Float
+  predictedMaxPrice  Float
+  predictedModal     Float
+  confidenceScore    Float                        // 0.0 - 1.0
+  trendDirection     TrendDirection
+  trendStrength      TrendStrength
+  recommendation     Recommendation
+  reasoningText      String                       // Claude's explanation (markdown)
+  factors            Json                         // {weather, arrival, seasonality, msp, demand}
+  isValid            Boolean    @default(true)
+  createdAt          DateTime   @default(now())
+
+  crop               Crop       @relation(fields: [cropId], references: [id], onDelete: Cascade)
+  mandi              Mandi      @relation(fields: [mandiId], references: [id], onDelete: Cascade)
+
+  @@map("predictions")
+}
+
+enum TrendDirection {
+  STRONGLY_RISING
+  RISING
+  STABLE
+  FALLING
+  STRONGLY_FALLING
+}
+
+enum TrendStrength {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum Recommendation {
+  SELL_NOW
+  WAIT
+  MONITOR
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DECISION HISTORY
+// ─────────────────────────────────────────────────────────────────────────────
+model DecisionHistory {
+  id             String         @id @default(uuid())
+  userId         String
+  cropId         String
+  commodity      String
+  quantityQtl    Float                             // quintals to sell
+  mandiSelected  String                            // Mandi name
+  distanceKm     Float
+  transportCost  Float                             // ₹ total
+  grossRevenue   Float                             // ₹ total
+  laborCost      Float          @default(0)
+  mandiFee       Float          @default(0)
+  netProfit      Float
+  decision       Recommendation
+  actionTaken    String?                           // What farmer actually did
+  decisionDate   DateTime       @default(now())
+  notes          String?
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  crop           Crop           @relation(fields: [cropId], references: [id], onDelete: Cascade)
+
+  @@map("decision_history")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEATHER ALERTS
+// ─────────────────────────────────────────────────────────────────────────────
+model WeatherAlert {
+  id           String      @id @default(uuid())
+  state        String
+  district     String?
+  alertType    AlertType
+  severity     Severity
+  title        String
+  description  String
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+
+  @@map("weather_alerts")
+}
+
+enum AlertType {
+  HEAVY_RAIN
+  HEATWAVE
+  COLD_WAVE
+  CYCLONE
+  DROUGHT
+  FROST
+  HAILSTORM
+  FLOOD
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  EXTREME
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRANSPORT RATES
+// ─────────────────────────────────────────────────────────────────────────────
+model TransportRate {
+  id            String   @id @default(uuid())
+  vehicleType   VehicleType
+  state         String
+  ratePerKmQtl  Float                           // ₹ per km per quintal
+  minChargeRs   Float    @default(0)            // minimum charge
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@unique([vehicleType, state])
+  @@map("transport_rates")
+}
+
+enum VehicleType {
+  TRACTOR_TROLLEY
+  MINI_TRUCK
+  TRUCK
+  PICKUP
+}
