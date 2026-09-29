@@ -32,6 +32,95 @@ const T = {
   mr: { appName:'किसानमित्र AI', tagline:'शेतकरी निर्णय सहाय्य व्यासपीठ', login:'लॉगिन', register:'नोंदणी', dashboard:'डॅशबोर्ड', crops:'पीक नियोजन', market:'बाजार विश्लेषण', mandi:'मंडी तुलना', predict:'किंमत अंदाज', calc:'नफा कॅल्क्युलेटर', weather:'हवामान व धोके', assistant:'AI सहाय्यक', reports:'अहवाल', profile:'प्रोफाइल', logout:'लॉगआउट', sellNow:'आत्ता विका', wait:'थांबा', monitor:'लक्ष ठेवा', ask:'शेती, बाजारभाव बद्दल विचारा...', welcome:'नमस्कार', language:'भाषा' },
 };
 
+const LANGUAGES = [
+  { code: 'en', label: 'English', native: 'English', flag: '🇬🇧' },
+  { code: 'hi', label: 'Hindi', native: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'pa', label: 'Punjabi', native: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+  { code: 'mr', label: 'Marathi', native: 'मराठी', flag: '🇮🇳' },
+];
+
+function LanguageDropdown({ lang, onLangChange, variant = 'dropdown' }) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const currentLang = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
+
+  if (variant === 'pills') {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl">
+        {LANGUAGES.map(l => (
+          <button
+            key={l.code}
+            type="button"
+            onClick={() => onLangChange(l.code)}
+            className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+              lang === l.code
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            {l.native}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative inline-block text-left" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+        aria-label="Select Language"
+      >
+        <Globe size={14} className="text-emerald-600 shrink-0" />
+        <span>{currentLang.native}</span>
+        <ChevronDown size={12} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+          <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-50 mb-1">
+            Language / भाषा
+          </div>
+          {LANGUAGES.map(l => (
+            <button
+              key={l.code}
+              type="button"
+              onClick={() => {
+                onLangChange(l.code);
+                setOpen(false);
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-left transition-colors cursor-pointer ${
+                lang === l.code
+                  ? 'bg-emerald-50 text-emerald-700 font-bold'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span>{l.native}</span>
+                <span className="text-[10px] text-slate-400">({l.label})</span>
+              </div>
+              {lang === l.code && <Check size={14} className="text-emerald-600" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MOCK DATA ─────────────────────────────────────────────────────────────────
 const CROPS = [
   { id:1, name:'Wheat', nameHi:'गेहूं', emoji:'🌾', season:'Rabi', area:5.5, unit:'Acre', sowDate:'15 Nov 2025', harvestDate:'20 Mar 2026', stage:'Flowering', stageNum:4, totalStages:6, stageProgress:68, health:'Good', healthColor:'emerald', msp:2275, currentPrice:2340, location:'Amritsar', soilType:'Loamy', water:'Medium', variety:'HD-3086' },
@@ -554,7 +643,7 @@ function GoogleAuthButton({ text, onClick }) {
   );
 }
 
-function LandingView({ onLogin, onNavigate, lang }) {
+function LandingView({ onLogin, onNavigate, lang, onLangChange }) {
   const t = T[lang] || T.en;
   const [mode, setMode] = useState('home'); // home | login | register | clerk_login | clerk_register
   const { isSignedIn } = useUser();
@@ -761,9 +850,12 @@ function LandingView({ onLogin, onNavigate, lang }) {
   if (mode === 'login') return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <button onClick={() => setMode('home')} className="flex items-center gap-2 text-emerald-600 text-sm font-medium mb-6 cursor-pointer">
-          <ChevronRight size={16} className="rotate-180"/> Back to Home
-        </button>
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={() => setMode('home')} className="flex items-center gap-2 text-emerald-600 text-sm font-medium cursor-pointer">
+            <ChevronRight size={16} className="rotate-180"/> Back to Home
+          </button>
+          {onLangChange && <LanguageDropdown lang={lang} onLangChange={onLangChange} />}
+        </div>
         <div className="bg-white rounded-3xl shadow-xl border border-emerald-100 p-8">
           <div className="text-center mb-6">
             <div className="text-4xl mb-2">🌾</div>
@@ -841,9 +933,12 @@ function LandingView({ onLogin, onNavigate, lang }) {
   if (mode === 'register') return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <button onClick={() => setMode('home')} className="flex items-center gap-2 text-emerald-600 text-sm font-medium mb-6 cursor-pointer">
-          <ChevronRight size={16} className="rotate-180"/> Back to Home
-        </button>
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={() => setMode('home')} className="flex items-center gap-2 text-emerald-600 text-sm font-medium cursor-pointer">
+            <ChevronRight size={16} className="rotate-180"/> Back to Home
+          </button>
+          {onLangChange && <LanguageDropdown lang={lang} onLangChange={onLangChange} />}
+        </div>
         <div className="bg-white rounded-3xl shadow-xl border border-emerald-100 p-8">
           <div className="text-center mb-6">
             <div className="text-4xl mb-2">👨‍🌾</div>
@@ -989,7 +1084,8 @@ function LandingView({ onLogin, onNavigate, lang }) {
           <span className="text-2xl">🌾</span>
           <div><p className="font-bold text-emerald-700 text-lg leading-tight">{t.appName}</p></div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {onLangChange && <LanguageDropdown lang={lang} onLangChange={onLangChange} />}
           {isSignedIn ? (
             <div className="flex items-center gap-3">
               <button onClick={onLogin} className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
@@ -1117,7 +1213,7 @@ function DashboardView({ lang, farmer, weather, onRefreshLocation, locationLoadi
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard icon={IndianRupee} label="Wheat Price" value="₹2,340/qtl" sub="Nearest Mandi" color="emerald" trend={2.5}/>
         <StatCard icon={TrendingUp} label="Expected Return" value="₹1.28L" sub="5.5 Acre wheat" color="blue"/>
         <StatCard icon={CloudSun} label="Live Weather" value={`${curWeather.temp}°C`} sub={curWeather.condition || "Clear"} color="amber"/>
@@ -1229,20 +1325,23 @@ function DashboardView({ lang, farmer, weather, onRefreshLocation, locationLoadi
         </div>
       </div>
 
-      {/* Price chart */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-bold text-slate-900 text-sm">Wheat Price — 30 Days</h3>
-          <Badge color="emerald">+₹160 MTD</Badge>
+      {/* Charts (2-column on desktop) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Price chart */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-bold text-slate-900 text-sm">Wheat Price — 30 Days</h3>
+            <Badge color="emerald">+₹160 MTD</Badge>
+          </div>
+          <LineChart data={WHEAT_30D} height={100}/>
+          <div className="flex justify-between text-xs text-slate-400 mt-1"><span>30 days ago</span><span>Today</span></div>
         </div>
-        <LineChart data={WHEAT_30D} height={100}/>
-        <div className="flex justify-between text-xs text-slate-400 mt-1"><span>30 days ago</span><span>Today</span></div>
-      </div>
 
-      {/* Market Arrivals */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-        <h3 className="font-bold text-slate-900 text-sm mb-3">Market Arrivals (Qtl) — 15 Days</h3>
-        <BarChart data={arrivals} height={80} color="#3b82f6"/>
+        {/* Market Arrivals */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <h3 className="font-bold text-slate-900 text-sm mb-3">Market Arrivals (Qtl) — 15 Days</h3>
+          <BarChart data={arrivals} height={80} color="#3b82f6"/>
+        </div>
       </div>
 
       {/* Alerts */}
@@ -1612,7 +1711,7 @@ function MarketAnalyticsView({ lang, location, onNavigate }) {
             <span>NATIONAL LIVE TICKER</span>
             <span className="text-[10px] text-slate-500">(Click crop to inspect)</span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar -mx-1 px-1 shrink-0">
             {liveTicker.map(t => {
               const matched = COMMODITIES_LIST.find(c => c.key === t.commodity) || {};
               const isSelected = selectedCrop === t.commodity;
@@ -1637,7 +1736,7 @@ function MarketAnalyticsView({ lang, location, onNavigate }) {
       )}
 
       {/* ─── Commodity Quick Selection Pills ─── */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar -mx-1 px-1 shrink-0">
         {COMMODITIES_LIST.map(c => {
           const isSel = selectedCrop === c.key;
           return (
@@ -2703,7 +2802,7 @@ function PricePredictionView({ lang, onNavigate }) {
       <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 space-y-3">
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
           {/* Category Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none no-scrollbar -mx-1 px-1 shrink-0">
             {PREDICTION_CATEGORIES.map(cat => {
               const active = selectedCat === cat.id;
               return (
@@ -3069,39 +3168,42 @@ function ProfitCalculatorView({ lang }) {
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-slate-900">Profit Calculator</h2>
 
-      {/* Input form */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
-        <h3 className="font-semibold text-slate-800 text-sm">Crop & Sale Details</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="text-xs font-medium text-slate-600 block mb-1">Crop</label>
-            <select value={form.crop} onChange={e => set('crop',e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
-              <option>Wheat</option><option>Rice</option><option>Mustard</option><option>Cotton</option>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {/* Input form */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
+          <h3 className="font-semibold text-slate-800 text-sm">Crop & Sale Details</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">Crop</label>
+              <select value={form.crop} onChange={e => set('crop',e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                <option>Wheat</option><option>Rice</option><option>Mustard</option><option>Cotton</option>
+              </select>
+            </div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">Quantity (Qtl)</label><input type="number" value={form.qty} onChange={e => set('qty',+e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">Sale Price (₹/Qtl)</label><input type="number" value={form.price} onChange={e => set('price',+e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">Distance to Mandi (km)</label><input type="number" value={form.dist} onChange={e => set('dist',+e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
+          </div>
+          <div><label className="text-xs font-medium text-slate-600 block mb-1">Select Mandi</label>
+            <select value={form.mandi} onChange={e => { set('mandi',e.target.value); const m = MANDIS.find(x => x.name===e.target.value); if(m) set('price', m[form.crop.toLowerCase()]||m.wheat); }} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+              {MANDIS.map(m => <option key={m.id}>{m.name}</option>)}
             </select>
           </div>
-          <div><label className="text-xs font-medium text-slate-600 block mb-1">Quantity (Qtl)</label><input type="number" value={form.qty} onChange={e => set('qty',+e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
-          <div><label className="text-xs font-medium text-slate-600 block mb-1">Sale Price (₹/Qtl)</label><input type="number" value={form.price} onChange={e => set('price',+e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
-          <div><label className="text-xs font-medium text-slate-600 block mb-1">Distance to Mandi (km)</label><input type="number" value={form.dist} onChange={e => set('dist',+e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
-        </div>
-        <div><label className="text-xs font-medium text-slate-600 block mb-1">Select Mandi</label>
-          <select value={form.mandi} onChange={e => { set('mandi',e.target.value); const m = MANDIS.find(x => x.name===e.target.value); if(m) set('price', m[form.crop.toLowerCase()]||m.wheat); }} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
-            {MANDIS.map(m => <option key={m.id}>{m.name}</option>)}
-          </select>
-        </div>
-        <div><label className="text-xs font-medium text-slate-600 block mb-1">Vehicle Type</label>
-          <div className="flex gap-2">
-            {['small','medium','large'].map(v => (
-              <button key={v} onClick={() => set('vehicle',v)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${form.vehicle===v?'bg-emerald-600 text-white':'bg-slate-100 text-slate-600'}`}>{v.charAt(0).toUpperCase()+v.slice(1)}</button>
-            ))}
+          <div><label className="text-xs font-medium text-slate-600 block mb-1">Vehicle Type</label>
+            <div className="flex gap-2">
+              {['small','medium','large'].map(v => (
+                <button key={v} onClick={() => set('vehicle',v)} className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${form.vehicle===v?'bg-emerald-600 text-white':'bg-slate-100 text-slate-600'}`}>{v.charAt(0).toUpperCase()+v.slice(1)}</button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">Bag Cost (₹/Qtl)</label><input type="number" value={form.bagCost} onChange={e => set('bagCost',+e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">Labour (₹/Qtl)</label><input type="number" value={form.labourCost} onChange={e => set('labourCost',+e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
+            <div><label className="text-xs font-medium text-slate-600 block mb-1">Other (₹)</label><input type="number" value={form.otherCost} onChange={e => set('otherCost',+e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div><label className="text-xs font-medium text-slate-600 block mb-1">Bag Cost (₹/Qtl)</label><input type="number" value={form.bagCost} onChange={e => set('bagCost',+e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
-          <div><label className="text-xs font-medium text-slate-600 block mb-1">Labour (₹/Qtl)</label><input type="number" value={form.labourCost} onChange={e => set('labourCost',+e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
-          <div><label className="text-xs font-medium text-slate-600 block mb-1">Other (₹)</label><input type="number" value={form.otherCost} onChange={e => set('otherCost',+e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"/></div>
-        </div>
-      </div>
 
-      {/* Results */}
+        {/* Results & Breakdown Column */}
+        <div className="space-y-4">
+          {/* Results */}
       <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-4 text-white">
         <p className="text-emerald-200 text-xs font-medium mb-1">💰 Expected Net Return</p>
         <p className="text-4xl font-black">₹{(net/1000).toFixed(2)}K</p>
@@ -3145,6 +3247,8 @@ function ProfitCalculatorView({ lang }) {
               <span key={x.l} className="flex items-center gap-1"><div className={`w-2 h-2 rounded-sm ${x.c}`}/><span className="text-slate-500">{x.l}</span></span>
             ))}
           </div>
+        </div>
+      </div>
         </div>
       </div>
 
@@ -3221,7 +3325,8 @@ function WeatherRiskView({ lang, weather, location, onRefreshLocation, locationL
         {/* 7-day forecast */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
           <h3 className="font-bold text-slate-900 text-sm mb-3">7-Day Forecast</h3>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
+            <div className="grid grid-cols-7 gap-1.5 min-w-[330px]">
             {(curWeather.forecast || WEATHER.forecast).map(d => (
               <div key={d.day} className={`text-center p-2 rounded-xl ${d.rain>60?'bg-blue-50':'bg-slate-50'}`}>
                 <p className="text-slate-500 text-[10px] font-medium">{d.day}</p>
@@ -3231,6 +3336,7 @@ function WeatherRiskView({ lang, weather, location, onRefreshLocation, locationL
                 {d.rain>0 && <p className="text-blue-500 text-[10px] mt-0.5 flex items-center justify-center gap-0.5"><Droplets size={8}/>{d.rain}%</p>}
               </div>
             ))}
+            </div>
           </div>
         </div>
 
@@ -3424,13 +3530,13 @@ function AIAssistantView({ lang, farmer, profileData, location }) {
     <div className="flex flex-col h-full">
       <h2 className="text-xl font-bold text-slate-900 mb-3">AI Assistant</h2>
       {/* Suggested questions */}
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar -mx-1 px-1 shrink-0 mb-3">
         {CHAT_SUGGESTIONS.map(s => (
-          <button key={s} onClick={() => { setInput(s); send(s); }} className="whitespace-nowrap px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 text-xs font-medium rounded-full hover:bg-emerald-50 transition-colors shrink-0">{s}</button>
+          <button key={s} onClick={() => { setInput(s); send(s); }} className="whitespace-nowrap px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 text-xs font-medium rounded-full hover:bg-emerald-50 transition-colors shrink-0 cursor-pointer">{s}</button>
         ))}
       </div>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 mb-3 min-h-[300px] max-h-[450px]">
+      <div className="flex-1 overflow-y-auto space-y-3 mb-3 min-h-[340px] max-h-[58vh] pr-1">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role==='user'?'justify-end':''}`}>
             {m.role==='assistant' && <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center mr-2 mt-1 shrink-0 text-white text-xs font-bold">AI</div>}
@@ -3913,7 +4019,22 @@ const NAV_ITEMS = [
 const MOBILE_NAV = ['dashboard','crops','mandi','assistant','profile'];
 
 export default function KisanMitra() {
-  const [lang, setLang] = useState('en');
+  const [lang, setLangState] = useState(() => {
+    try {
+      return localStorage.getItem('kisan_lang') || 'en';
+    } catch {
+      return 'en';
+    }
+  });
+
+  const setLang = (newLang) => {
+    setLangState(newLang);
+    try {
+      localStorage.setItem('kisan_lang', newLang);
+    } catch (e) {
+      console.warn('Failed to save language:', e);
+    }
+  };
   const [view, setView] = useState('landing');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const t = T[lang];
@@ -4027,7 +4148,11 @@ export default function KisanMitra() {
 
   const isLoggedIn = view !== 'landing';
 
-  const navigate = (v) => { setView(v); setSidebarOpen(false); window.scrollTo(0, 0); };
+  const navigate = (v) => {
+    setView(v);
+    setSidebarOpen(false);
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  };
 
   const onLogin = (userData) => {
     if (userData && typeof userData === 'object') {
@@ -4066,7 +4191,7 @@ export default function KisanMitra() {
 
   const renderView = () => {
     switch(view) {
-      case 'landing': return <LandingView onLogin={onLogin} onNavigate={navigate} lang={lang}/>;
+      case 'landing': return <LandingView onLogin={onLogin} onNavigate={navigate} lang={lang} onLangChange={setLang}/>;
       case 'dashboard': return <DashboardView lang={lang} farmer={farmer} weather={weather} location={location} onRefreshLocation={detectLocationAndWeather} locationLoading={locationLoading} onNavigate={navigate}/>;
       case 'crops': return <CropPlanningView lang={lang}/>;
       case 'market': return <MarketAnalyticsView lang={lang} location={location} onNavigate={navigate}/>;
@@ -4102,19 +4227,29 @@ export default function KisanMitra() {
     <div className="min-h-screen bg-slate-50">
       {/* ── DESKTOP SIDEBAR ── */}
       <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-100 shadow-sm z-30">
-        {/* Logo */}
-        <div className="px-4 py-5 border-b border-slate-100">
+        {/* Logo & Language Switcher */}
+        <div className="px-4 py-4 border-b border-slate-100 space-y-3">
           <div className="flex items-center gap-2.5">
             <span className="text-2xl">🌾</span>
-            <div><p className="font-bold text-emerald-700 text-lg leading-tight">{t.appName}</p><p className="text-slate-400 text-xs">AI Farming Platform</p></div>
+            <div>
+              <p className="font-bold text-emerald-700 text-lg leading-tight">{t.appName}</p>
+              <p className="text-slate-400 text-xs">AI Farming Platform</p>
+            </div>
+          </div>
+          <div className="pt-1 border-t border-slate-50">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <Globe size={11} className="text-emerald-600"/>
+              <span>Language / भाषा</span>
+            </p>
+            <LanguageDropdown lang={lang} onLangChange={setLang} variant="pills" />
           </div>
         </div>
         {/* Nav */}
         <nav className="flex-1 py-4 px-2 overflow-y-auto">
           {NAV_ITEMS.map(item => (
-            <button key={item.id} onClick={() => navigate(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 text-left transition-all ${view===item.id?'bg-emerald-50 text-emerald-700 font-semibold':'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+            <button key={item.id} onClick={() => navigate(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 text-left transition-all cursor-pointer ${view===item.id?'bg-emerald-50 text-emerald-700 font-semibold':'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
               <item.icon size={18} className={view===item.id?'text-emerald-600':'text-slate-400'}/>
-              <span className="text-sm">{item.label}</span>
+              <span className="text-sm">{t[item.id] || item.label}</span>
               {item.id==='assistant' && <span className="ml-auto bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">AI</span>}
             </button>
           ))}
@@ -4128,20 +4263,29 @@ export default function KisanMitra() {
               <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-lg">👨‍🌾</div>
             )}
             <div className="flex-1 min-w-0"><p className="font-semibold text-slate-900 text-sm truncate">{farmer.name}</p><p className="text-slate-400 text-xs truncate">{farmer.location}</p></div>
-            <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors"><LogOut size={16}/></button>
+            <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"><LogOut size={16}/></button>
           </div>
         </div>
       </aside>
 
       {/* ── MOBILE HEADER ── */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-white border-b border-slate-100 shadow-sm">
-        <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center"><Menu size={18} className="text-slate-600"/></button>
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg">🌾</span>
-            <span className="font-bold text-emerald-700 text-base">{t.appName}</span>
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-b border-slate-100 shadow-sm">
+        <div className="flex items-center justify-between px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSidebarOpen(true)} className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors cursor-pointer">
+              <Menu size={18} className="text-slate-600"/>
+            </button>
+            <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => navigate('dashboard')}>
+              <span className="text-xl">🌾</span>
+              <span className="font-bold text-emerald-700 text-base">{t.appName}</span>
+            </div>
           </div>
-          <button onClick={() => navigate('assistant')} className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center"><Bot size={18} className="text-emerald-600"/></button>
+          <div className="flex items-center gap-2">
+            <LanguageDropdown lang={lang} onLangChange={setLang} variant="dropdown" />
+            <button onClick={() => navigate('assistant')} className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer">
+              <Bot size={18}/>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -4149,28 +4293,36 @@ export default function KisanMitra() {
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-40" onClick={() => setSidebarOpen(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"/>
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100">
               <div className="flex items-center gap-2"><span className="text-2xl">🌾</span><span className="font-bold text-emerald-700">{t.appName}</span></div>
-              <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center"><X size={16}/></button>
+              <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center cursor-pointer"><X size={16}/></button>
             </div>
-            <nav className="py-3 px-2 overflow-y-auto" style={{maxHeight:'calc(100vh - 140px)'}}>
+            {/* Language Switcher in Drawer */}
+            <div className="p-3 border-b border-slate-100 bg-slate-50/70">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <Globe size={11} className="text-emerald-600"/>
+                <span>Language / भाषा</span>
+              </p>
+              <LanguageDropdown lang={lang} onLangChange={setLang} variant="pills" />
+            </div>
+            <nav className="flex-1 py-3 px-2 overflow-y-auto">
               {NAV_ITEMS.map(item => (
-                <button key={item.id} onClick={() => navigate(item.id)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl mb-0.5 text-left transition-all ${view===item.id?'bg-emerald-50 text-emerald-700 font-semibold':'text-slate-500 hover:bg-slate-50'}`}>
+                <button key={item.id} onClick={() => navigate(item.id)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl mb-0.5 text-left transition-all cursor-pointer ${view===item.id?'bg-emerald-50 text-emerald-700 font-semibold':'text-slate-500 hover:bg-slate-50'}`}>
                   <item.icon size={18} className={view===item.id?'text-emerald-600':'text-slate-400'}/>
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <span className="text-sm font-medium">{t[item.id] || item.label}</span>
                 </button>
               ))}
             </nav>
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 bg-white">
+            <div className="p-4 border-t border-slate-100 bg-white">
               <div className="flex items-center gap-3">
                 {isSignedIn ? (
                   <UserButton />
                 ) : (
                   <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-xl">👨‍🌾</div>
                 )}
-                <div className="flex-1"><p className="font-semibold text-slate-900 text-sm">{farmer.name}</p><p className="text-slate-400 text-xs">{farmer.location}</p></div>
-                <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors"><LogOut size={16}/></button>
+                <div className="flex-1 min-w-0"><p className="font-semibold text-slate-900 text-sm truncate">{farmer.name}</p><p className="text-slate-400 text-xs truncate">{farmer.location}</p></div>
+                <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"><LogOut size={16}/></button>
               </div>
             </div>
           </div>
@@ -4178,19 +4330,21 @@ export default function KisanMitra() {
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="lg:ml-64 pb-20 lg:pb-8">
-        <div className="max-w-3xl mx-auto px-4 pt-16 lg:pt-6">
+      <main className="lg:ml-64 pb-32 lg:pb-12 min-h-screen">
+        <div className="max-w-6xl xl:max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-18 lg:pt-8">
           {renderView()}
         </div>
       </main>
 
       {/* ── MOBILE BOTTOM NAV ── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-100 shadow-lg">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-slate-100 shadow-lg">
         <div className="flex items-stretch">
           {NAV_ITEMS.filter(n => MOBILE_NAV.includes(n.id)).map(item => (
-            <button key={item.id} onClick={() => navigate(item.id)} className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all ${view===item.id?'text-emerald-600':'text-slate-400'}`}>
+            <button key={item.id} onClick={() => navigate(item.id)} className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all cursor-pointer ${view===item.id?'text-emerald-600':'text-slate-400'}`}>
               <item.icon size={20} className={view===item.id?'text-emerald-600':'text-slate-400'}/>
-              <span className={`text-[10px] font-semibold ${view===item.id?'text-emerald-600':'text-slate-400'}`}>{item.mobileLabel}</span>
+              <span className={`text-[10px] font-semibold truncate max-w-[64px] ${view===item.id?'text-emerald-600':'text-slate-400'}`}>
+                {t[item.id] ? t[item.id].split(' ')[0] : item.mobileLabel}
+              </span>
               {view===item.id && <div className="w-1 h-1 rounded-full bg-emerald-600 mt-0.5"/>}
             </button>
           ))}
