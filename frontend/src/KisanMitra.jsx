@@ -1179,20 +1179,20 @@ function DashboardView({ lang, farmer, weather, onRefreshLocation, locationLoadi
     <div className="space-y-5">
       {/* Welcome */}
       <div className="bg-gradient-to-r from-emerald-600 via-emerald-600 to-emerald-500 rounded-3xl p-5 text-white shadow-lg shadow-emerald-900/10">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
             <p className="text-emerald-100 text-sm font-medium">{t.welcome}, 👋</p>
-            <h2 className="text-2xl font-bold mt-0.5 tracking-tight">{farmer?.name || 'Farmer'}</h2>
-            <div className="flex items-center gap-2 mt-1">
+            <h2 className="text-2xl font-bold mt-0.5 tracking-tight truncate">{farmer?.name || 'Farmer'}</h2>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <p className="text-emerald-100 text-sm flex items-center gap-1.5 font-medium">
-                <MapPin size={14} className="text-emerald-300"/>
-                <span>{farmer?.location || 'India'}</span>
+                <MapPin size={14} className="text-emerald-300 shrink-0"/>
+                <span className="truncate">{farmer?.location || 'India'}</span>
               </p>
               {onRefreshLocation && (
                 <button
                   onClick={onRefreshLocation}
                   disabled={locationLoading}
-                  className="bg-emerald-700/60 hover:bg-emerald-700 text-emerald-100 text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 transition-all cursor-pointer"
+                  className="bg-emerald-700/60 hover:bg-emerald-700 text-emerald-100 text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 transition-all cursor-pointer shrink-0"
                   title="Refresh Live Location"
                 >
                   <RefreshCw size={10} className={locationLoading ? 'animate-spin' : ''} />
@@ -1201,8 +1201,23 @@ function DashboardView({ lang, farmer, weather, onRefreshLocation, locationLoadi
               )}
             </div>
           </div>
-          {farmer?.avatar && (
-            <img src={farmer.avatar} alt={farmer.name} className="w-14 h-14 rounded-2xl object-cover border-2 border-white/50 shadow-md hidden sm:block" />
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('profile')}
+              className="flex flex-col items-center gap-1 bg-white/15 hover:bg-white/25 active:scale-95 border border-white/25 rounded-2xl px-3 py-2 text-white transition-all cursor-pointer shrink-0 shadow-sm"
+              title="View Full Profile"
+            >
+              {farmer?.avatar ? (
+                <img src={farmer.avatar} alt={farmer.name} className="w-10 h-10 rounded-xl object-cover border border-white/60 shadow-sm" />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-white/25 flex items-center justify-center text-lg font-bold">
+                  {farmer?.name ? farmer.name.charAt(0).toUpperCase() : '👨‍🌾'}
+                </div>
+              )}
+              <span className="text-[10px] font-bold text-emerald-100 flex items-center gap-0.5">
+                Profile <ChevronRight size={10} />
+              </span>
+            </button>
           )}
         </div>
         <div className="flex gap-2.5 mt-4 flex-wrap">
@@ -4330,8 +4345,8 @@ export default function KisanMitra() {
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="lg:ml-64 pb-32 lg:pb-12 min-h-screen">
-        <div className="max-w-6xl xl:max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-18 lg:pt-8">
+      <main className="lg:ml-64 pt-16 lg:pt-0 pb-32 lg:pb-12 min-h-screen">
+        <div className="max-w-6xl xl:max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-8 lg:py-8">
           {renderView()}
         </div>
       </main>
