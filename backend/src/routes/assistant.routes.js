@@ -3,8 +3,6 @@ const router = express.Router();
 const { sendSuccess, sendError } = require('../utils/response');
 const db = require('../data/mockData');
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY;
-
 // Smart Agricultural Knowledge Engine for instant response & offline fallback
 function getAgriculturalAdvice(message, {
   location = 'Punjab, India',
@@ -114,6 +112,19 @@ function getAgriculturalAdvice(message, {
   return `Namaste ${farmerName}! 🙏\n\nRegarding your question: *"**${message}**"*\n\nHere is our smart agricultural recommendation:\n\n• 🌾 **Farming Guidance**: Ensure proper soil moisture and monitor your **${crops}** crop canopy for any pest or fungal spots.\n• 📊 **Market Advantage**: Always verify current APMC modal prices against government MSP before committing to a local buyer.\n• 💡 **Free Support**: You can ask me specific questions like: \n  - *"What is current wheat MSP?"*\n  - *"When should I sell mustard?"*\n  - *"How to cure yellow rust?"*\n  - *"Fertilizer schedule for wheat"*`;
 }
 
+// Diagnostic status endpoint to check Gemini API Key health
+router.get('/status', (req, res) => {
+  const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
+  const hasKey = Boolean(geminiKey && geminiKey !== 'your_gemini_api_key_here' && geminiKey.length > 10);
+  return sendSuccess(res, {
+    geminiKeyConfigured: hasKey,
+    keyPrefix: hasKey ? geminiKey.slice(0, 8) + '...' : 'none',
+    keyLength: geminiKey.length,
+    preferredModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    serverTime: new Date().toISOString()
+  }, 'Assistant status fetched.');
+});
+
 router.post('/chat', async (req, res) => {
   const {
     message,
@@ -127,13 +138,23 @@ router.post('/chat', async (req, res) => {
 
   if (!message) return sendError(res, 'message is required.', 400);
 
-  // If real Gemini key is configured, use Google Gemini (gemini-2.5-flash)
-  const geminiModelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  if (GEMINI_KEY && GEMINI_KEY !== 'your_gemini_api_key_here' && GEMINI_KEY.length > 10) {
+  // Dynamic evaluation of Gemini Key (supports per-request environment injection on serverless)
+  const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
+  const candidateModels = [
+    process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+    'gemini-2.5-flash-lite'
+  ].filter((m, i, arr) => arr.indexOf(m) === i && m && m !== 'gemini-2.0-flash');
+
+  let geminiReply = null;
+  let usedModel = null;
+  let geminiErrorMsg = null;
+
+  if (geminiKey && geminiKey !== 'your_gemini_api_key_here' && geminiKey.length > 10) {
     try {
       const { GoogleGenerativeAI } = require('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-      const model = genAI.getGenerativeModel({ model: geminiModelName });
+      const genAI = new GoogleGenerativeAI(geminiKey);
 
       const systemPrompt = `You are KisanMitra AI (किसानमित्र), a warm, supportive, and expert personal agricultural advisor assisting Indian farmer ${farmerName} from ${location}.
 Farmer Profile:
@@ -149,19 +170,43 @@ Guidelines:
 4. Mention Government MSP (Minimum Support Price) and relevant schemes (PM-KISAN, PMFBY, KCC) when discussing crop sales or finances.
 5. Use Indian Rupees (₹) and metric units (Quintal, Acre, Kilogram).`;
 
-      const result = await model.generateContent(`${systemPrompt}\n\nFarmer asks: ${message}`);
-      const text = result?.response?.text();
-      if (text && text.trim().length > 0) {
-        return sendSuccess(res, { reply: text, source: geminiModelName, timestamp: new Date().toISOString() }, 'Response generated.');
+      for (const modelName of candidateModels) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(`${systemPrompt}\n\nFarmer asks: ${message}`);
+          const text = result?.response?.text();
+          if (text && text.trim().length > 0) {
+            geminiReply = text;
+            usedModel = modelName;
+            break;
+          }
+        } catch (mErr) {
+          geminiErrorMsg = mErr.message;
+          console.warn(`Gemini model ${modelName} failed:`, mErr.message);
+        }
       }
     } catch (err) {
-      console.error('Gemini call error, falling back to local agricultural engine:', err.message);
+      geminiErrorMsg = err.message;
+      console.error('Gemini init error:', err.message);
     }
+  }
+
+  if (geminiReply) {
+    return sendSuccess(res, {
+      reply: geminiReply,
+      source: usedModel,
+      timestamp: new Date().toISOString()
+    }, 'Response generated.');
   }
 
   // Smart agricultural knowledge engine (comprehensive domain fallback)
   const reply = getAgriculturalAdvice(message, { location, cropContext, language, farmerName, crops, land });
-  return sendSuccess(res, { reply, source: 'kisanmitra-expert-engine', timestamp: new Date().toISOString() }, 'Response generated.');
+  return sendSuccess(res, {
+    reply,
+    source: 'kisanmitra-expert-engine',
+    geminiError: geminiErrorMsg || (geminiKey ? 'Gemini call failed' : 'No API key configured'),
+    timestamp: new Date().toISOString()
+  }, 'Response generated.');
 });
 
 router.post('/diagnose', (req, res) => {
