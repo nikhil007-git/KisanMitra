@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { sendSuccess, sendError } = require('../utils/response');
 const db = require('../data/mockData');
+const { validateChat } = require('../middleware/validators');
+const { aiLimiter } = require('../middleware/rateLimiter');
 
 // Smart Agricultural Knowledge Engine for instant response & offline fallback
 function getAgriculturalAdvice(message, {
@@ -118,14 +120,12 @@ router.get('/status', (req, res) => {
   const hasKey = Boolean(geminiKey && geminiKey !== 'your_gemini_api_key_here' && geminiKey.length > 10);
   return sendSuccess(res, {
     geminiKeyConfigured: hasKey,
-    keyPrefix: hasKey ? geminiKey.slice(0, 8) + '...' : 'none',
-    keyLength: geminiKey.length,
     preferredModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     serverTime: new Date().toISOString()
   }, 'Assistant status fetched.');
 });
 
-router.post('/chat', async (req, res) => {
+router.post('/chat', aiLimiter, validateChat, async (req, res) => {
   const {
     message,
     language = 'en',

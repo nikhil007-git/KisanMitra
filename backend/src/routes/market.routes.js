@@ -44,10 +44,41 @@ router.get('/commodities', (req, res) => {
   return sendSuccess(res, commodities, 'Commodities list fetched.');
 });
 
+const jwt = require('jsonwebtoken');
+const config = require('../config');
+const { extractToken } = require('../utils/token');
+
+const JWT_SECRET = config.jwt?.secret || process.env.JWT_SECRET || 'kisanmitra-secret-dev-2025';
+
 router.post('/', (req, res) => {
+  const token = extractToken(req);
+  if (!token) return sendError(res, 'Authentication required to submit market prices.', 401);
+
+  try {
+    if (!token.startsWith('local_token_') || process.env.NODE_ENV === 'production') {
+      jwt.verify(token, JWT_SECRET);
+    }
+  } catch {
+    return sendError(res, 'Invalid or expired token.', 401);
+  }
+
   const { mandiId, commodity, priceDate, modalPrice } = req.body;
-  if (!mandiId || !commodity || !modalPrice) return sendError(res, 'mandiId, commodity and modalPrice required.', 400);
-  return sendSuccess(res, { id: require('uuid').v4(), mandiId, commodity, modalPrice: +modalPrice, priceDate: priceDate || new Date() }, 'Price recorded.', 201);
+  if (!mandiId || !commodity || modalPrice === undefined || modalPrice === null) {
+    return sendError(res, 'mandiId, commodity and modalPrice required.', 400);
+  }
+
+  const numPrice = Number(modalPrice);
+  if (isNaN(numPrice) || numPrice <= 0 || numPrice > 1000000) {
+    return sendError(res, 'modalPrice must be a valid positive number.', 400);
+  }
+
+  return sendSuccess(res, {
+    id: require('uuid').v4(),
+    mandiId: String(mandiId).slice(0, 50),
+    commodity: String(commodity).slice(0, 50),
+    modalPrice: numPrice,
+    priceDate: priceDate || new Date()
+  }, 'Price recorded.', 201);
 });
 
 module.exports = router;

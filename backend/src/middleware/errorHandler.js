@@ -45,7 +45,13 @@ const notFound = (req, res) => {
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return sendError(res, 'Validation failed', 422, errors.array());
+    const formatted = errors.array().map((e) => ({
+      field: e.path || e.param || 'unknown',
+      message: e.msg,
+      value: e.value,
+      location: e.location,
+    }));
+    return sendError(res, 'Validation failed', 422, formatted);
   }
   next();
 };

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../data/mockData');
 const { sendSuccess, sendError } = require('../utils/response');
+const { validateIdParam } = require('../middleware/validators');
 
 router.get('/', (req, res) => {
   let mandis = db.findMandis();
@@ -35,7 +36,7 @@ router.get('/nearby', (req, res) => {
   return sendSuccess(res, nearby, 'Nearby mandis fetched.');
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', validateIdParam, (req, res) => {
   const mandi = db.findMandi(req.params.id);
   if (!mandi) return sendError(res, 'Mandi not found.', 404);
   const recentPrices = db.findMarketPrices({ mandiId: mandi.id, limit: 30 });
@@ -43,3 +44,4 @@ router.get('/:id', (req, res) => {
 });
 
 module.exports = router;
+

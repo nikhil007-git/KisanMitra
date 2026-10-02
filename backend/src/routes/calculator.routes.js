@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { sendSuccess, sendError } = require('../utils/response');
+const { validateTransportCalc, validateProfitCalc } = require('../middleware/validators');
 
-router.post('/transport', (req, res) => {
+router.post('/transport', validateTransportCalc, (req, res) => {
   const { fromLat, fromLon, toLat, toLon, quantityQtl = 50, vehicleType = 'medium', distanceKm: customDist } = req.body;
   const rates = { small: 10, medium: 7, large: 5.5 };
   const rate = rates[vehicleType] || 7;
@@ -24,7 +25,7 @@ router.post('/transport', (req, res) => {
   }, 'Transport cost calculated.');
 });
 
-router.post('/profit', (req, res) => {
+router.post('/profit', validateProfitCalc, (req, res) => {
   const { quantityQtl = 50, modalPricePerQtl = 2340, transportCostTotal = 1500, mandiFeePercent = 1.5, bagCostPerQtl = 5, labourCostPerQtl = 10, otherCosts = 0 } = req.body;
 
   const gross = +quantityQtl * +modalPricePerQtl;
@@ -68,3 +69,4 @@ router.post('/compare-mandis', (req, res) => {
 });
 
 module.exports = router;
+

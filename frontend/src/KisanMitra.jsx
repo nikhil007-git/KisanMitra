@@ -204,12 +204,13 @@ const WEATHER = {
   ],
 };
 
-const OPENWEATHER_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY || '9e6d99ccf671639138c977e3a951682c';
+const OPENWEATHER_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY || '';
 
 function getEmojiForCondition(cond = '') {
   const c = (cond || '').toLowerCase();
   if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
   if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+
   if (c.includes('snow')) return '❄️';
   if (c.includes('cloud')) return '⛅';
   if (c.includes('fog') || c.includes('mist') || c.includes('haze')) return '🌫️';
@@ -308,26 +309,30 @@ async function fetchLiveLocationAndWeather() {
   let state = detectedState;
   let country = detectedCountry;
 
-  try {
-    const geoRes = await fetch(`https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${OPENWEATHER_KEY}`);
-    if (geoRes.ok) {
-      const geoData = await geoRes.json();
-      if (Array.isArray(geoData) && geoData.length > 0) {
-        cityName = geoData[0].name || cityName;
-        state = geoData[0].state || state;
-        country = geoData[0].country || country;
+  if (OPENWEATHER_KEY) {
+    try {
+      const geoRes = await fetch(`https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${OPENWEATHER_KEY}`);
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        if (Array.isArray(geoData) && geoData.length > 0) {
+          cityName = geoData[0].name || cityName;
+          state = geoData[0].state || state;
+          country = geoData[0].country || country;
+        }
       }
+    } catch (err) {
+      console.warn('OpenWeather reverse geocode error:', err.message);
     }
-  } catch (err) {
-    console.warn('OpenWeather reverse geocode error:', err.message);
   }
 
   const locationDisplay = cityName && state ? `${cityName}, ${state}` : (cityName || state || 'India');
 
-  // 5. Fetch Live Weather via OpenWeather
+  // 5. Fetch Live Weather via OpenWeather (if configured)
   let weatherData = null;
-  try {
-    const owRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OPENWEATHER_KEY}`);
+  if (OPENWEATHER_KEY) {
+    try {
+      const owRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OPENWEATHER_KEY}`);
+
     if (owRes.ok) {
       const ow = await owRes.json();
       const main = ow.weather?.[0]?.main || 'Clear';
@@ -379,6 +384,9 @@ async function fetchLiveLocationAndWeather() {
   } catch (owErr) {
     console.warn('OpenWeather error:', owErr);
   }
+}
+
+
 
   // 6. Open-Meteo High Reliability Fallback (zero key needed)
   if (!weatherData) {
@@ -678,10 +686,11 @@ function LandingView({ onLogin, onNavigate, lang, onLangChange }) {
       setAuthError('Please enter your 10-digit phone number.');
       return;
     }
-    if (!regForm.password || regForm.password.length < 4) {
-      setAuthError('Password must be at least 4 characters long.');
+    if (!regForm.password || regForm.password.length < 6) {
+      setAuthError('Password must be at least 6 characters long.');
       return;
     }
+
 
     setAuthLoading(true);
     try {
@@ -3536,10 +3545,20 @@ function AIAssistantView({ lang, farmer, profileData, location }) {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, loading]);
 
   const formatMsg = (text) => text.split('\n').map((line, i) => {
-    if (line.startsWith('**') && line.endsWith('**')) return <p key={i} className="font-bold mt-2 first:mt-0">{line.slice(2,-2)}</p>;
-    const bold = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    return <p key={i} className="leading-relaxed" dangerouslySetInnerHTML={{__html:bold}}/>;
+    if (line.startsWith('**') && line.endsWith('**')) return <p key={i} className="font-bold mt-2 first:mt-0">{line.slice(2, -2)}</p>;
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return (
+      <p key={i} className="leading-relaxed">
+        {parts.map((part, pi) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={pi}>{part.slice(2, -2)}</strong>;
+          }
+          return part;
+        })}
+      </p>
+    );
   });
+
 
   return (
     <div className="flex flex-col h-full">

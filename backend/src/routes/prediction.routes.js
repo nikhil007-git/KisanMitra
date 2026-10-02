@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { sendSuccess, sendError } = require('../utils/response');
 const db = require('../data/mockData');
+const { validatePricePrediction } = require('../middleware/validators');
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-router.post('/price', async (req, res) => {
+router.post('/price', validatePricePrediction, async (req, res) => {
   const { commodity = 'Wheat', mandiId = 'm-1', horizon = 15 } = req.body;
   const mandi = db.findMandi(mandiId);
   const prices = db.findMarketPrices({ mandiId, commodity, limit: 30 });
@@ -47,3 +48,4 @@ router.get('/history', (req, res) => {
 });
 
 module.exports = router;
+

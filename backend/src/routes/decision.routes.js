@@ -1,10 +1,34 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
+const config = require('../config');
 const { sendSuccess, sendError } = require('../utils/response');
 const db = require('../data/mockData');
+const { validateDecision } = require('../middleware/validators');
+const { extractToken } = require('../utils/token');
 
-router.post('/', (req, res) => {
+const JWT_SECRET = config.jwt?.secret || process.env.JWT_SECRET || 'kisanmitra-secret-dev-2025';
+
+function resolveUser(req) {
+  try {
+    const token = extractToken(req);
+    if (token) {
+      if (token.startsWith('local_token_') && process.env.NODE_ENV !== 'production') {
+        return db.users[0];
+      }
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const user = db.findUser(decoded.userId);
+      if (user) return user;
+    }
+  } catch (err) {
+    // Invalid or expired token
+  }
+  return null;
+}
+
+router.post('/', validateDecision, (req, res) => {
+  const user = resolveUser(req);
   const { commodity = 'Wheat', mandiId = 'm-2', quantityQtl = 55, cropId } = req.body;
   const mandi = db.findMandi(mandiId) || db.mandis[0];
   const prices = db.findMarketPrices({ mandiId: mandi.id, commodity, limit: 14 });
@@ -15,6 +39,7 @@ router.post('/', (req, res) => {
 
   const decision = {
     id: uuidv4(),
+    userId: user ? user.id : (process.env.NODE_ENV === 'production' ? null : db.users[0]?.id),
     commodity,
     mandiId: mandi.id,
     mandiName: mandi.name,
@@ -41,8 +66,17 @@ router.post('/', (req, res) => {
   return sendSuccess(res, decision, 'Selling decision generated.');
 });
 
+// Protected against BOLA/IDOR: returns only decisions belonging to the authenticated user
 router.get('/history', (req, res) => {
-  return sendSuccess(res, db.decisions, 'Decision history fetched.');
+  const user = resolveUser(req);
+  const userId = user ? user.id : (process.env.NODE_ENV === 'production' ? null : db.users[0]?.id);
+
+  if (!userId) {
+    return sendSuccess(res, [], 'Decision history fetched.');
+  }
+
+  const userDecisions = db.findDecisions(userId);
+  return sendSuccess(res, userDecisions, 'Decision history fetched.');
 });
 
 module.exports = router;
